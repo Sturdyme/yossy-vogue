@@ -14,8 +14,9 @@ return [
 
     // Add your ACTUAL Vercel URL here
     'allowed_origins' => [
-        'http://localhost:5173', 
-        'https://your-project-name.vercel.app'
+        'http://localhost:5173',
+        'http://localhost:5174', // Added for your Vite app
+        'https://yossy-vogue.vercel.app/'
     ],
 
     'allowed_origins_patterns' => [],

@@ -1,33 +1,23 @@
 <?php
 
 return [
+'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Cross-Origin Resource Sharing (CORS) Configuration
-    |--------------------------------------------------------------------------
-    */
+'allowed_methods' => ['*'], // Allows POST, GET, OPTIONS, etc.
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'register', 'logout'],
+'allowed_origins' => [
+    'https://yossy-vogue.vercel.app/', 
+    'http://localhost:5174'
+],
 
-    'allowed_methods' => ['*'],
+'allowed_origins_patterns' => [],
 
-    // Add your ACTUAL Vercel URL here
-    'allowed_origins' => [
-        'http://localhost:5173',
-        'http://localhost:5174', // Added for your Vite app
-        'https://yossy-vogue.vercel.app/'
-    ],
+'allowed_headers' => ['*'], // This is crucial for Axios
 
-    'allowed_origins_patterns' => [],
+'exposed_headers' => [],
 
-    'allowed_headers' => ['*'],
+'max_age' => 0,
 
-    'exposed_headers' => [],
-
-    'max_age' => 0,
-
-    // SET THIS TO TRUE for Sign-in/Register to work correctly
-    'supports_credentials' => true,
+'supports_credentials' => true, // Set to true if you are using cookies/sessions
 
 ];

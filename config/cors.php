@@ -6,7 +6,7 @@ return [
 'allowed_methods' => ['*'], // Allows POST, GET, OPTIONS, etc.
 
 'allowed_origins' => [
-    'https://yossy-vogue.vercel.app/', 
+    'https://yossy-vogue.vercel.app', 
     'http://localhost:5174'
 ],
 

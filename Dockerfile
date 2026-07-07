@@ -27,4 +27,4 @@ EXPOSE 10000
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Default command (will be executed by the entrypoint)
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=$PORT"]
+CMD php artisan serve --host=0.0.0.0 --port=$PORT

@@ -28,6 +28,7 @@ class SendOtpEmailJob implements ShouldQueue
      */
     public function handle(): void
     {
+        \Log::info('Worker outbound IP: ' . file_get_contents('https://api.ipify.org'));
         Mail::to($this->email)->send(new OtpMail($this->otp));
     }
 }

@@ -39,3 +39,7 @@ Route::get('/otp/verify/{otp}', [OtpController::class, 'verifyOtp']);
 Route::post('/paystack/webhook', [WebhookController::class, 'handle']);
 
 Route::post('/chat', [AIController::class, 'chat']);
+
+Route::get('/debug-ip', function () {
+    return response()->json(['ip' => file_get_contents('https://api.ipify.org')]);
+});

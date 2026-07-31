@@ -32,3 +32,5 @@ class SendOtpEmailJob implements ShouldQueue
         Mail::to($this->email)->send(new OtpMail($this->otp));
     }
 }
+
+

@@ -112,7 +112,7 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@yossyvogue.com'),
+        'address' => env('MAIL_FROM_ADDRESS', 'hello@yossyvogue.shop'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 

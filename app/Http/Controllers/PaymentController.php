@@ -116,34 +116,32 @@ class PaymentController extends Controller
     }
 
     public function callback(Request $request, PaystackService $paystack)
-    {
-        $reference = $request->query('reference');
+{
+    $reference = $request->query('reference');
+    $frontendUrl = config('app.frontend_url');
 
-        if (!$reference) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'No reference supplied'
-            ], 400);
-        }
-
-        $response = $paystack->verify($reference);
-
-        if (
-            isset($response['status']) &&
-            $response['status'] === true &&
-            isset($response['data']) &&
-            $response['data']['status'] === 'success'
-        ) {
-            $this->completeOrder(
-                $reference,
-                $response['data']['metadata']['order_id'] ?? null
-            );
-
-            return redirect("http://localhost:5173/payment-success?reference={$reference}");
-        }
-
-        return redirect("http://localhost:5173/payment-success?status=failed");
+    if (!$reference) {
+        return redirect("{$frontendUrl}/payment-success?status=failed&message=no_reference");
     }
+
+    $response = $paystack->verify($reference);
+
+    if (
+        isset($response['status']) &&
+        $response['status'] === true &&
+        isset($response['data']) &&
+        $response['data']['status'] === 'success'
+    ) {
+        $this->completeOrder(
+            $reference,
+            $response['data']['metadata']['order_id'] ?? null
+        );
+
+        return redirect("{$frontendUrl}/payment-success?reference={$reference}");
+    }
+
+    return redirect("{$frontendUrl}/payment-success?status=failed");
+}
 
     private function completeOrder($reference, $orderId)
     {

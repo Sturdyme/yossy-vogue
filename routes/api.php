@@ -40,6 +40,23 @@ Route::post('/paystack/webhook', [WebhookController::class, 'handle']);
 
 Route::post('/chat', [AIController::class, 'chat']);
 
-Route::get('/debug-ip', function () {
-    return response()->json(['ip' => file_get_contents('https://api.ipify.org')]);
+Route::get('/debug-payment', function () {
+    try {
+        $user = \App\Models\User::first();
+        $order = \App\Models\Order::create([
+            'user_id' => $user->id,
+            'reference' => 'DEBUG_' . \Illuminate\Support\Str::random(12),
+            'subtotal' => 1000,
+            'shipping' => 150,
+            'total_amount' => 1150,
+            'status' => 'pending',
+        ]);
+        return response()->json(['success' => true, 'order_id' => $order->id]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ], 500);
+    }
 });

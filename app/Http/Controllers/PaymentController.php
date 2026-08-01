@@ -64,14 +64,18 @@ class PaymentController extends Controller
         
 
         // ✅ INIT PAYSTACK (EMAIL REQUIRED)
-        $paymentData = $paystack->initialize([
-            'email' => $user->email,  // FIXED (Paystack requirement)
-            'amount' => $koboAmount,
-            'reference' => $reference,
-            'metadata' => [
-                'order_id' => $order->id,
-            ]
-        ]);
+       try {
+    $paymentData = $paystack->initialize([
+        'email' => $user->email,
+        'amount' => $koboAmount,
+        'reference' => $reference,
+        'metadata' => ['order_id' => $order->id]
+    ]);
+} catch (\Throwable $e) {
+    error_log('PAYMENT CONTROLLER ERROR: ' . $e->getMessage());
+    error_log('TRACE: ' . $e->getTraceAsString());
+    throw $e;
+}
 
         // ✅ STORE PAYMENT
         Payment::create([

@@ -29,9 +29,8 @@ class PaystackService
         $result = $response->json();
 
         if (empty($result['status']) || !$result['status']) {
-            \Log::error('Paystack initialization failed', [
-                'response' => $result
-            ]);
+           error_log('PAYSTACK ERROR: ' . json_encode($result));
+           
             throw new \Exception('Paystack initialization failed: ' . ($result['message'] ?? 'Unknown error'));
         }
 

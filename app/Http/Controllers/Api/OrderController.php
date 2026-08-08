@@ -21,6 +21,7 @@ class OrderController extends Controller
         $order = Order::with('items')
             ->where('order_id', $order_id)
             ->where('user_id', $user->id)
+            ->where('payment_status', 'paid')
             ->first();
 
         if (!$order) {
@@ -44,7 +45,7 @@ class OrderController extends Controller
 
         $orders = Order::with('items')
         ->where('user_id', $user->id)
-        ->latest()
+        ->where('payment_status', 'paid')
         ->get();
 
         return response()->json([

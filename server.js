@@ -12,7 +12,13 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["https://yossy-vogue.vercel.app", "http://localhost:3000"],
+    origin: [
+      "https://yossy-vogue.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000",
+    ],
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -28,7 +34,8 @@ const orderIdRegex = /\b(?:YV-|ORD-)?([a-zA-Z0-9]{6,12})\b/i;
 
 app.post("/api/chat", async (req, res) => {
   try {
-    const { message, orderId } = req.body;
+    const { message} = req.body;
+    const { orderId } = req.body;
 
     if (!orderId && !message) {
       const match = message.match(orderIdRegex);
@@ -44,7 +51,7 @@ app.post("/api/chat", async (req, res) => {
       try {
         // Parameterized query ($1) prevents SQL injection attacks
         const queryText = `
-          SELECT id, status, payment_status, total_amount, created_at 
+          SELECT id, status, total_amount, created_at 
           FROM orders 
           WHERE id::text = $1 OR reference = $1 
           LIMIT 1
@@ -58,7 +65,6 @@ app.post("/api/chat", async (req, res) => {
             Found Order Details:
             - Order Ref/ID: ${order.id}
             - Current Status: ${order.status}
-            - Payment Status: ${order.payment_status}
             - Total Amount: ₦${order.total_amount}
             - Date Created: ${order.created_at}
           `;

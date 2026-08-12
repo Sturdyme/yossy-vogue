@@ -50,20 +50,20 @@ app.post("/api/chat", async (req, res) => {
   try {
     console.log("DEBUG: orderId received =", JSON.stringify(orderId));
     const queryText = `
-      SELECT id, status, total_amount, created_at 
+      SELECT id, status, reference,  total_amount, created_at 
       FROM orders 
       WHERE id::text = $1 OR reference = $1 
       LIMIT 1
     `;
     const dbResult = await pool.query(queryText, [orderId]);
-    console.log("DEBUG: rows found =", dbResult.rows.length);
-    console.log("DEBUG: rows =", JSON.stringify(dbResult.rows));
+  
 
         if (dbResult.rows.length > 0) {
           const order = dbResult.rows[0];
           orderContext = `
             Found Order Details:
-            - Order Ref/ID: ${order.id}
+            - Order ID: ${order.id}
+            - Order Reference: ${order.reference}
             - Current Status: ${order.status}
             - Total Amount: ₦${order.total_amount}
             - Date Created: ${order.created_at}

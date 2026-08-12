@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -30,34 +37,34 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const orderIdRegex = /\b(YUNA_[a-zA-Z0-9]+)\b/i;
+const orderIdRegex = /\b(?:YV-|ORD-)?([a-zA-Z0-9]{6,12})\b/i;
 
 app.post("/api/chat", async (req, res) => {
   try {
-  const { message } = req.body;
-    let { orderId } = req.body;
-     if (!orderId && message) {
-  const match = message.match(orderIdRegex);
-  if (match) {
-    orderId = match[1];
-  }
-}
+    const { message} = req.body;
+    const { orderId } = req.body;
+
+    if (!orderId && !message) {
+      const match = message.match(orderIdRegex);
+      if(match) {
+        orderId = match[1];
+      }
+    }
 
     let orderContext = "No specific order requested or provided.";
 
     // Query database if an order ID/Reference was provided
     if (orderId) {
-  try {
-    console.log("DEBUG: orderId received =", JSON.stringify(orderId));
-    const queryText = `
-      SELECT id, status, total_amount, created_at 
-      FROM orders 
-      WHERE id::text = $1 OR reference = $1 
-      LIMIT 1
-    `;
-    const dbResult = await pool.query(queryText, [orderId]);
-    console.log("DEBUG: rows found =", dbResult.rows.length);
-    console.log("DEBUG: rows =", JSON.stringify(dbResult.rows));
+      try {
+        // Parameterized query ($1) prevents SQL injection attacks
+        const queryText = `
+          SELECT id, status, total_amount, created_at 
+          FROM orders 
+          WHERE id::text = $1 OR reference = $1 
+          LIMIT 1
+        `;
+        
+        const dbResult = await pool.query(queryText, [orderId]);
 
         if (dbResult.rows.length > 0) {
           const order = dbResult.rows[0];

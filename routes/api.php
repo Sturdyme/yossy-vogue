@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,8 +21,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         return $request->user();
     });
     Route::post('/logout', [AuthController::class, 'logout']);
-    
+    Route::post('/logout-all', [AuthController::class, 'logoutAll']);
     Route::post('/pay', [PaymentController::class, 'initialize'])->name('payment.initialize'); 
+
+    Route::put('/user-profile', [UserController::class, 'updateProfile']);
+
+    Route::put('/user-address', [UserController::class, 'updateAddress']);
+
+    Route::put('/user-notifications', [UserController::class, 'updateNotifications']);
+
+    Route::put('/user-privacy', [UserController::class, 'updatePrivacy']);
 });
 
 Route::get('/verify/{reference}', [PaymentController::class, 'verify']);

@@ -110,4 +110,27 @@ class UserController extends Controller
             'privacy' => $user->privacy,
         ]);
     }
+
+    public function destroy(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        if (!Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'message' => 'Password is incorrect.'
+            ], 422);
+        }
+
+        //Invalidate every active session before deleting
+        $user->tokens()->delete();
+        $user->delete();
+
+        return response()->json([
+            'message' => 'Account deleted successfully.'
+        ]);
+    }
 }

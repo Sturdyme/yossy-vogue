@@ -27,6 +27,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/user/address', [UserController::class, 'updateAddress']);
     Route::put('/user/notifications', [UserController::class, 'updateNotifications']);
     Route::put('/user/privacy', [UserController::class, 'updatePrivacy']);
+    Route::post('/user/data-export', [UserController::class, 'exportData']);
     Route::delete('/user', [UserController::class, 'destroy']);
 });
 

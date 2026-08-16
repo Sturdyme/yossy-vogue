@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ExportUserDataJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
     public function updateProfile(Request $request)
-    { 
+    {
         $user = $request->user();
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email, ' . $user->id,
+            'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -31,13 +32,13 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'current_password' => 'required|string',
-            'new_password' => 'required|string|min:8|confirmed',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         if (!Hash::check($validated['current_password'], $user->password)) {
-         return response()->json([
-            'message' => 'Current password is incorrect.'
-         ], 422);
+            return response()->json([
+                'message' => 'Current password is incorrect.',
+            ], 422);
         }
 
         $user->update([
@@ -51,24 +52,23 @@ class UserController extends Controller
 
     public function updateAddress(Request $request)
     {
-       $user = $request->user();
-       
-       $validated = $request->validate([
-          'line1' => 'required|string|max:255',
-          'city' => 'required|string|max:100',
-          'state' => 'required|string|max:100',
-          'postalCode' => 'nullable|string|max:20',
-          'country' => 'required|string|max:100',
-       ]);
+        $user = $request->user();
 
-       $user->update([
-        'address' => $validated,
-       ]);
+        $validated = $request->validate([
+            'line1' => 'required|string|max:255',
+            'city' => 'required|string|max:100',
+            'state' => 'required|string|max:100',
+            'postalCode' => 'nullable|string|max:20',
+        ]);
 
-       return response()->json([
-        'message' => 'Address updated successfully.',
-        'address' => $user->address,
-       ]);
+        $user->update([
+            'address' => $validated,
+        ]);
+
+        return response()->json([
+            'message' => 'Address updated successfully.',
+            'address' => $user->address,
+        ]);
     }
 
     public function updateNotifications(Request $request)
@@ -87,7 +87,7 @@ class UserController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Notification preferences updated',
+            'message' => 'Notification preferences updated.',
             'notifications' => $user->notifications,
         ]);
     }
@@ -106,8 +106,19 @@ class UserController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Privacy preferences updated',
+            'message' => 'Privacy preferences updated.',
             'privacy' => $user->privacy,
+        ]);
+    }
+
+    public function exportData(Request $request)
+    {
+        $user = $request->user();
+
+        ExportUserDataJob::dispatch($user->id);
+
+        return response()->json([
+            'message' => 'Your data export is being prepared and will be emailed to you shortly.',
         ]);
     }
 
@@ -121,16 +132,15 @@ class UserController extends Controller
 
         if (!Hash::check($validated['password'], $user->password)) {
             return response()->json([
-                'message' => 'Password is incorrect.'
+                'message' => 'Password is incorrect.',
             ], 422);
         }
 
-        //Invalidate every active session before deleting
         $user->tokens()->delete();
         $user->delete();
 
         return response()->json([
-            'message' => 'Account deleted successfully.'
+            'message' => 'Account deleted successfully.',
         ]);
     }
 }

@@ -37,5 +37,14 @@ class User extends Authenticatable
     'notifications' => 'array',
     'privacy' => 'array',
   ];
+
+  public function orders()
+  {
+    return $this->hasMany(Order::class);
+  }
   
+  public function payments()
+  {
+    return $this->hasMany(Payment::class);
+  }
 }

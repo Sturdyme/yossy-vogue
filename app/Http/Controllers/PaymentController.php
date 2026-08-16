@@ -13,9 +13,12 @@ class PaymentController extends Controller
 {
     public function initialize(Request $request, PaystackService $paystack)
     {
-        $request->validate([
+        $validated = $request->validate([
             'items' => 'required|array|min:1',
+            'fulfillment_method' => 'sometimes|in:delivery,pickup'
         ]);
+
+        $fulfillmentMethod = $validated['fulfillment_method'] ?? 'delivery';
 
         $subtotal = 0;
 
@@ -23,10 +26,10 @@ class PaymentController extends Controller
             $subtotal += $item['price'] * $item['quantity'];
         }
 
-        $shipping = $subtotal * 0.15;
+        $shipping = $fulfillmentMethod === 'delivery' ? $subtotal * 0.15 : 0;
         $totalAmount = $subtotal + $shipping;
 
-           $koboAmount = (int) round($totalAmount * 100);
+        $koboAmount = (int) round($totalAmount * 100);
 
         $reference = 'YUNA_' . Str::random(12);
 
@@ -38,44 +41,40 @@ class PaymentController extends Controller
             ], 401);
         }
 
-     
-
         // ✅ CREATE ORDER
         $order = Order::create([
-            'user_id' => $user->id,   // FIXED
+            'user_id' => $user->id,
             'reference' => $reference,
             'subtotal' => $subtotal,
             'shipping' => $shipping,
             'total_amount' => $totalAmount,
             'status' => 'pending',
+            'fulfillment_method' => $fulfillmentMethod,
         ]);
 
-         foreach ($request->items as $item) {
-
-         OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => $item['product_id'] ?? $item['id'],
-            'product_name' => $item['name'] ?? $item['title'] ?? 'Unknown Product',
-            'quantity' => $item['quantity'],
-            'price' => $item['price'],
-         ]);
-         }
-
-        
+        foreach ($request->items as $item) {
+            OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $item['product_id'] ?? $item['id'],
+                'product_name' => $item['name'] ?? $item['title'] ?? 'Unknown Product',
+                'quantity' => $item['quantity'],
+                'price' => $item['price'],
+            ]);
+        }
 
         // ✅ INIT PAYSTACK (EMAIL REQUIRED)
-       try {
-    $paymentData = $paystack->initialize([
-        'email' => $user->email,
-        'amount' => $koboAmount,
-        'reference' => $reference,
-        'metadata' => ['order_id' => $order->id]
-    ]);
-} catch (\Throwable $e) {
-    error_log('PAYMENT CONTROLLER ERROR: ' . $e->getMessage());
-    error_log('TRACE: ' . $e->getTraceAsString());
-    throw $e;
-}
+        try {
+            $paymentData = $paystack->initialize([
+                'email' => $user->email,
+                'amount' => $koboAmount,
+                'reference' => $reference,
+                'metadata' => ['order_id' => $order->id]
+            ]);
+        } catch (\Throwable $e) {
+            error_log('PAYMENT CONTROLLER ERROR: ' . $e->getMessage());
+            error_log('TRACE: ' . $e->getTraceAsString());
+            throw $e;
+        }
 
         // ✅ STORE PAYMENT
         Payment::create([
@@ -116,32 +115,32 @@ class PaymentController extends Controller
     }
 
     public function callback(Request $request, PaystackService $paystack)
-{
-    $reference = $request->query('reference');
-    $frontendUrl = config('app.frontend_url');
+    {
+        $reference = $request->query('reference');
+        $frontendUrl = config('app.frontend_url');
 
-    if (!$reference) {
-        return redirect("{$frontendUrl}/payment-success?status=failed&message=no_reference");
+        if (!$reference) {
+            return redirect("{$frontendUrl}/payment-success?status=failed&message=no_reference");
+        }
+
+        $response = $paystack->verify($reference);
+
+        if (
+            isset($response['status']) &&
+            $response['status'] === true &&
+            isset($response['data']) &&
+            $response['data']['status'] === 'success'
+        ) {
+            $this->completeOrder(
+                $reference,
+                $response['data']['metadata']['order_id'] ?? null
+            );
+
+            return redirect("{$frontendUrl}/payment-success?reference={$reference}");
+        }
+
+        return redirect("{$frontendUrl}/payment-success?status=failed");
     }
-
-    $response = $paystack->verify($reference);
-
-    if (
-        isset($response['status']) &&
-        $response['status'] === true &&
-        isset($response['data']) &&
-        $response['data']['status'] === 'success'
-    ) {
-        $this->completeOrder(
-            $reference,
-            $response['data']['metadata']['order_id'] ?? null
-        );
-
-        return redirect("{$frontendUrl}/payment-success?reference={$reference}");
-    }
-
-    return redirect("{$frontendUrl}/payment-success?status=failed");
-}
 
     private function completeOrder($reference, $orderId)
     {
@@ -155,7 +154,6 @@ class PaymentController extends Controller
 
         Order::where('id', $orderId)->update([
             'status' => 'completed',
-            
         ]);
     }
 }

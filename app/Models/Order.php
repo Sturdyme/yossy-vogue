@@ -13,6 +13,7 @@ class Order extends Model
         'shipping',
         'total_amount',
         'status',
+        'fulfillment_method',
        
         
     ];

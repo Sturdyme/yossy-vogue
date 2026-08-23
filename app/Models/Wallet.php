@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Wallet extends Model
+{
+    protected $fillable=[
+       "user_id",
+       'balance',
+       'currency'
+    ];
+
+    protected $attributes = [
+        'balance' => 0.00,
+        'currency' => 'NGN'
+    ];
+
+    protected $casts = [
+        'balance' => 'float',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+}

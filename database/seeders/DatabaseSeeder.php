@@ -19,6 +19,16 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             ProductSeeder::class,
+            ClothingProductSeeder::class,
+            HomeEquipmentSeeder::class,
+            ElectronicSeeder::class,
+            MobileSeeder::class,
+            AccessoriesSeeder::class,
+            HairWigs::class,
+            HomeTheaters::class,
+            CamerasSeeder::class,
+            ChairsSeeder::class,
+            ToysSeeder::class,
         ]);
     }
 }

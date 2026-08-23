@@ -19,6 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->append(HandleCors::class);
+
+        // Exclude Paystack Webhook from CSRF protection
+        $middleware->preventRequestForgery(except: [
+            'api/paystack/webhook',
+            'paystack/webhook',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

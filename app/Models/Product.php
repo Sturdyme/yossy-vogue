@@ -14,6 +14,14 @@ class Product extends Model
         'description',
         'price',
         'category',
-        'image_url'
+        'brand',
+        'stock',
+        'image_url',
+        'is_featured'
     ];
+
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order');    
+    }
 }

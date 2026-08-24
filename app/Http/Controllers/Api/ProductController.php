@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use Cloudinary\Cloudinary;
+use Cloudinary\Configuration\Configuration;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -64,7 +66,15 @@ class ProductController extends Controller
             'gallery' => 'nullable|array',
             'gallery.*' => 'image|max:4096',
         ]);
-        $imagePath = $request->file('image')->store('products', 'public');
+       
+        Configuration::instance(env('CLOUDINARY_URL'));
+        $cloudinary = new Cloudinary();
+
+        $uploadImage = $cloudinary->uploadApi()->upload(
+            $request->file('image')->getRealPath(),
+            ['folder' => 'products']
+        );
+        $imageUrl = $uploadImage['secure_url'];
 
         $product = Product::create([
             'name' => $validated['name'],
@@ -74,28 +84,34 @@ class ProductController extends Controller
             'brand' => $validated['brand'] ?? null,
             'stock' => $validated['stock'],
             'is_featured' => $request->boolean('is_featured'),
-            'image_url' => \Storage::url($imagePath),
+            'image_url' => $imageUrl
         ]);
 
         $product->images()->create([
-            'image_url' => \Storage::url($imagePath),
+            'image_url' => $imageUrl,
             'sort_order' => 0,
             'is_primary' => true,
         ]);
 
         if ($request->hasFile('gallery')) {
             foreach ($request->file('gallery') as $index => $file) {
-                $path = $file->store('products', 'public');
+                $uploaded = $cloudinary->uploadApi()->upload(
+                    $file->getRealPath(),
+                    ['folder' => 'products']
+                );
                 $product->images()->create([
-                    'image_url' => \Storage::url($path),
+                    'image_url' => $uploaded['secure_url'],
                     'sort_order' => $index + 1,
                     'is_primary' => false,
                 ]);
             }
-        }
-        $product->load('images');
+           
+            }
+             $product->load('images');
         return response()->json($product, 201);
-    }
+        }
+       
+    
 
     public function update(Request $request, Product $product)
     {

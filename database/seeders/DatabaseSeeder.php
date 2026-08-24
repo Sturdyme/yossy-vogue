@@ -18,17 +18,10 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         $this->call([
-            ProductSeeder::class,
-            ClothingProductSeeder::class,
-            HomeEquipmentSeeder::class,
-            ElectronicSeeder::class,
-            MobileSeeder::class,
-            AccessoriesSeeder::class,
-            HairWigs::class,
-            HomeTheaters::class,
-            CamerasSeeder::class,
-            ChairsSeeder::class,
-            ToysSeeder::class,
+        $this->call([
+            //AdminUserSeeder::class,
+            // ShippinZonesSeeder::class,
+        ])
         ]);
     }
 }

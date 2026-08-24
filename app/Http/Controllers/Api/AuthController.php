@@ -82,6 +82,7 @@ class AuthController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'role' => $user->role,
             'is_verified' => (bool) $user->is_verified,
         ],
         'token' => $token

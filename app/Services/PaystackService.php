@@ -11,7 +11,7 @@ class PaystackService
 
     public function initialize(array $data): array
     {
-        // Generate a clean string reference if one isn't already provided
+     
         $reference = $data['reference'] ?? (string) Str::uuid();
 
        
@@ -22,7 +22,7 @@ class PaystackService
                 'email'        => $data['email'],
                 'amount'       => $amountKobo,
                 'reference'    => $reference,
-                'callback_url' => route('payment.callback'),
+                'callback_url' => $data['callback_url'] ?? route('payment.callback'),
                 'metadata'     => $data['metadata'] ?? []
             ]);
 

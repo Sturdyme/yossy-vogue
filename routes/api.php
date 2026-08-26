@@ -45,6 +45,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/wallet', [WalletController::class, 'getWallet']);
     Route::post('/wallet/top-up', [WalletController::class, 'initializeTopUp']);
     Route::get('/wallet/verify/{reference}', [WalletController::class, 'verifyTopUp']);
+    Route::get('/wallet/callback', [WalletController::class, 'callback'])->name('wallet.callback');
 
     Route::put('/user/profile', [UserController::class, 'updateProfile']);
     Route::put('/user/password', [UserController::class, 'updatePassword']);

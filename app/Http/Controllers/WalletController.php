@@ -50,6 +50,7 @@ class WalletController extends Controller
             'email' => $user->email,
             'amount' => $koboAmount,
             'reference' => $reference,
+            'callback_url' => route('wallet.callback'),
             'metadata' =>[
                 'payment_type' => 'wallet_topup',
                 'user_id' => $user->id,
@@ -200,5 +201,33 @@ public function getWallet(Request $request)
         'wallet' => $wallet,
         'transactions' => $transactions
     ]);
+}
+
+public function callback(Request $request, PaystackService $paystack)
+{
+    $reference = $request->query('reference');
+    $frontendUrl = config('app.frontend_url');
+
+    if (!$reference) {
+        return redirect("{$frontendUrl}/wallet/callback?status=failed&message=no_reference");
+    }
+
+    $paystackData = $paystack->verify($reference);
+
+    if (
+        isset($paystackData['status']) && $paystackData['status'] === true &&
+        isset($paystackData['data']) && $paystackData['data']['status'] === 'success'
+    ) {
+         $paidAmount = $paystackData['data']['amount'] / 100;
+         $metadata = $paystackData['data']['metadata'] ?? [];
+
+         if (($metadata['payment_type'] ?? '') === 'wallet_top_up') {
+            $this->creditWalletSafely($reference, $paidAmount, $metadata);
+         }
+         return redirect("{$frontendUrl}/wallet/callback?reference={$reference}&status=success");
+
+    }
+
+    return redirect("{$frontendUrl}/wallet/callback?reference={$reference}&status=failed");
 }
 }

@@ -124,7 +124,7 @@ return [
     ],
 
     [
-        'frontend_url' => env('FRONTEND_URL', 'http://yossy-vogue.vercel.app'),
+        'frontend_url' => env('FRONTEND_URL', 'https://yossy-vogue.vercel.app'),
     ]
 
 ];

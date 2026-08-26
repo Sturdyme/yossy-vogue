@@ -45,8 +45,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/wallet', [WalletController::class, 'getWallet']);
     Route::post('/wallet/top-up', [WalletController::class, 'initializeTopUp']);
     Route::get('/wallet/verify/{reference}', [WalletController::class, 'verifyTopUp']);
-    Route::get('/wallet/callback', [WalletController::class, 'callback'])->name('wallet.callback');
-
+    
     Route::put('/user/profile', [UserController::class, 'updateProfile']);
     Route::put('/user/password', [UserController::class, 'updatePassword']);
     Route::put('/user/address', [UserController::class, 'updateAddress']);
@@ -60,6 +59,8 @@ Route::post('/paystack/webhook', [WalletController::class, 'handleWebhook']);
 
 Route::get('/verify/{reference}', [PaymentController::class, 'verify']);
 Route::get('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
+Route::get('/wallet/callback', [WalletController::class, 'callback'])->name('wallet.callback');
+
 
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/orders', [OrderController::class, 'userOrders']);

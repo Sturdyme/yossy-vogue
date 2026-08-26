@@ -24,10 +24,12 @@ class User extends Authenticatable
     'notifications',
     'privacy',
     'role',
+    'admin_pin',
   ];
 
   protected $hidden = [
     'password',
+    'admin_pin',
   ];
 
   protected $casts = [

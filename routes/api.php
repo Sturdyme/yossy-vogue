@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OrderController;
@@ -20,6 +21,13 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
  Route::post('/admin/products', [ProductController::class, 'store']);
     Route::put('/admin/products/{product}', [ProductController::class, 'update']);
     Route::delete('/admin/products/{product}', [ProductController::class, 'destroy']);
+    Route::get('/admin/orders', [OrderController::class, 'allOrders']);
+    Route::put('/admin/orders/{order}/status', [OrderController::class, 'updateStatus']);
+    Route::get('/admin/users', [UserController::class, 'index']);
+    Route::put('admin/users/{user}/role', [UserController::class, 'updateRole']);
+    Route::get('/admin/dashboard', [AdminController::class, 'dashboardStats']);
+    Route::post('/admin/pin/set', [UserController::class, 'setAdminPin']);
+    Route::post('/admin/pin/verify', [UserController::class, 'verifyAdminPin']);
 });
 
 Route::get('/products', [ProductController::class, 'index']);

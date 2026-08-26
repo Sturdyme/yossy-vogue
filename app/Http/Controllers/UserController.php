@@ -3,11 +3,74 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ExportUserDataJob;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+
+public function index()
+{
+    return User::latest()->paginate(20);
+}
+
+
+public function setAdminPin(Request $request)
+{
+
+$validated = $request->validate([
+    'pin' => 'required|digits:4',
+]);
+
+$request->user()->update([
+    'admin_pin' => Hash::make($validated['pin']),
+]);
+
+return response()->json(['message' => 'PIN set successfully.']);
+}
+
+
+public function verifyAdminPin(Request $request)
+{
+    $validated = $request->validate([
+        'pin' => 'required|digits:4',
+    ]);
+
+    $user = $request->user();
+
+    if (!$user->admin_pin || !Hash::check($validated['pin'], $user->admin_pin)) {
+        return response()->json([
+            'message' => 'Incorrect Pin.'
+        ], 403);
+    }
+    return response()->json([
+        'message'=> 'PIN verified successfully',  'verified' =>true
+    ]);
+}
+
+
+
+
+public function updateRole(Request $request, User $user)
+{
+    $validated = $request->validate([
+        'role' => 'required|in:customer,admin',
+    ]);
+
+    if ($user->role === 'admin' && $validated['role'] !== 'admin') {
+        return response()->json([
+            'message' => 'Existing administrators cannot be demoted.',
+        ], 403);
+    }
+     
+    $user->update(['role' => $validated['role']]);
+
+    return response()->json($user);
+}
+
+
+
     public function updateProfile(Request $request)
     {
         $user = $request->user();

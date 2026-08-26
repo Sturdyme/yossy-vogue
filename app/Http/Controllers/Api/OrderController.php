@@ -52,4 +52,20 @@ class OrderController extends Controller
             'orders' => $orders
         ]);
     }
+
+    public function allOrders()
+    {
+        return Order::with(['item', 'user'])->latest()->paginate(20);
+    }
+
+    public function updateStatus(Request $request, Order $order)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:pending,processing,shipped,completed,cancelled',
+        ]);
+
+        $order->update(['status' => $validated['status']]);
+
+        return response()->json($order->load('item', 'user'));
+    }
 }

@@ -19,7 +19,7 @@ class ChairsSeeder extends Seeder
                 'description' => 'Compact crossbody bag in genuine leather.',
                 'price' => 72.00,
                 'category' => 'Chairs',
-                'brand' => 'Rode Express',
+                'brand' => 'Foodco',
                 'stock' => 10,
                 'image_url' => 'https://picsum.photos/seed/bag/400',
                 'images' => [

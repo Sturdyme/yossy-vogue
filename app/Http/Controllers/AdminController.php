@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
-use Illuminate\Http\Request;
+use App\Models\WalletTransaction;
 
 class AdminController extends Controller
 {
@@ -15,6 +15,9 @@ class AdminController extends Controller
             'total-orders' => Order::count(),
             'pending_orders'=> Order::where('status', 'pending')->count(),
             'total_revenue' => Order::where('status', 'completed')->sum('total_amount'),
+            'total_wallet_deposits' => WalletTransaction::where('type', 'credit')
+            ->where('status', 'success')
+            ->sum('amount'),
             'total_products' => Product::count(),
             'low_stock_products' => Product::where('stock', '<', 5)->count(),
             'total_users' => User::count(),

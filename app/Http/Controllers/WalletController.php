@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\PaystackService;
@@ -13,6 +15,7 @@ class WalletController extends Controller
 {
     public function initializeTopUp(Request $request, PaystackService $paystack)
     {
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:100'
         ]);
@@ -181,6 +184,91 @@ class WalletController extends Controller
         logger()->error('Verification failed: ' . $e->getMessage());
         return response()->json(['message' => 'Unable to verify payment with Paystack'], 500);
     }
+}
+
+public function payWithWallet(Request $request)
+{
+    $validated = $request->validate([
+       'items' => 'required|array|min:1',
+       'items.*.product_id' => 'required',
+       'items.*.name' => 'required"string',
+       'items.*.price' => 'required|numeric|min:0',
+       'items.*.quantity' => 'required|integer|min:1',
+       'fulfillment_method' => 'sometimes|in:delivery,pickup'
+    ]);
+
+    $user = $request->user();
+    $fulfillmentMethod = $validated['fulfillment_method'] ?? 'delivery';
+
+    $subtotal = 0;
+    foreach ($validated['items'] as $item) {
+        $subtotal +- $item['price'] * $item['quantity'];
+    }
+    $shipping = $fulfillmentMethod === 'delivery' ? $subtotal * 0.15 : 0;
+    $totalAmount = $subtotal + $shipping;
+
+    $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
+
+    if (!$wallet || $wallet->balance < $totalAmount) {
+        return response()->json([
+        'message' => 'Insufficient eallet balance.',
+        'balance' => $wallet->balance ?? 0,
+        'required' => $totalAmount,
+        ], 422);
+    }
+
+    $order = null;
+
+    DB::transaction(function () use ($validated, $user, $wallet, $subtotal, $shipping, $totalAmount, $fulfillmentMethod, &$order) {
+     $reference = 'WLTPAY_' . Str::random(12);
+     $balanceBefore = $wallet->balance;
+     $balanceAfter = $balanceBefore - $totalAmount;
+
+     $lockedWallet = Wallet::where('id', $wallet->id)->lockForUpdate()
+->first();
+  
+if ($lockedWallet->balance < $totalAmount) {
+    throw new \Exception('Insufficient balance at time of transaction.');
+}
+ $lockedWallet->update(['balance' => $balanceAfter]);
+
+ WalletTransaction::create([
+ 'wallet_id' => $lockedWallet->id,
+  'reference' => $reference,
+  'type' => 'debit',
+  'amount' => $totalAmount,
+  'balance_before' => $balanceBefore,
+  'balance_after' =>$balanceAfter,
+  'status' => 'success',
+  'description' => 'Order payment via wallet balance',
+ ]);
+
+   $order = Order::create([
+     'user_id' => $user->id,
+     'reference' => $reference,
+     'subtotal' => $subtotal,
+     'shipping' => $shipping,
+     'total_amount' => $totalAmount,
+     'status' => 'completed',
+     'fulfillment_method' => $fulfillmentMethod,
+   ]);
+
+   foreach ($validated['item'] as $item) {
+    OrderItem::create([
+      'order_id' => $order->id,
+      'product_id' => $item['product_id'],
+      'product_name' => $item['name'],
+      'quantity' => $item['quantity'],
+      'price' => $item['price'],
+    ]);
+   }
+
+});
+
+return response()->json([
+    'message' => 'Order placed successfully using wallet balance.',
+    'order' => $order->load('item'),
+],201);
 }
 
 public function getWallet(Request $request)

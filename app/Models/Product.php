@@ -17,7 +17,13 @@ class Product extends Model
         'brand',
         'stock',
         'image_url',
-        'is_featured'
+        'is_featured',
+        'is_deal'
+    ];
+
+    protected $casts = [
+        'is_featured' => 'boolean',
+        'is_deal' => 'boolean',
     ];
 
     public function images()

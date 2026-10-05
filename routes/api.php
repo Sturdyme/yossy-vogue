@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\Api\AuthController;
@@ -9,7 +10,6 @@ use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WalletController;
-use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -32,6 +32,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/search', [ProductController::class, 'search']);
+Route::get('products/featured', [ProductController::class, 'featured']);
+Route::get('products/deals', [ProductController::class, 'deals']);
 Route::get('/products/{product}', [ProductController::class, 'show']);
 
 
@@ -70,7 +72,5 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
 Route::get('/otp/resend', [OtpController::class, 'sendOtp']);
 Route::get('/otp/verify/{otp}', [OtpController::class, 'verifyOtp']);
-
-Route::post('/paystack/webhook', [WebhookController::class, 'handle']);
 
 Route::post('/chat', [AIController::class, 'chat']);

@@ -43,6 +43,14 @@ class ProductController extends Controller
     return response()->json($products);
 }
 
+public function deals()
+{
+    return Product::where('is_deal', true)
+    ->latest()
+    ->take(24)
+    ->get();
+}
+
     public function show(Product $product)
     {
         $product->load('images');
@@ -58,11 +66,12 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
-            'category' => 'required|string|max:100',
+            'category' => ['required_unless:is_deal,1', 'nullable', 'string'],
             'brand' => 'nullable|string|max:100',
             'stock' => 'required|integer|min:0',
             'image' => 'required|image|max:4096',
             'is_featured' => 'nullable|boolean',
+            'is_deal' => 'nullable|boolean',
             'gallery' => 'nullable|array',
             'gallery.*' => 'image|max:4096',
         ]);
@@ -80,10 +89,11 @@ class ProductController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'],
             'price' => $validated['price'],
-            'category' => $validated['category'],
+            'category' => $validated['category'] ?? null,
             'brand' => $validated['brand'] ?? null,
             'stock' => $validated['stock'],
             'is_featured' => $request->boolean('is_featured'),
+            'is_deal' => $request->boolean('is_deal'),
             'image_url' => $imageUrl
         ]);
 
@@ -124,6 +134,8 @@ class ProductController extends Controller
             'stock' => 'sometimes|integer|min:0',
             'image_url' => 'nullable|string|max:2048',
             'images' => 'nullable|array',
+            'is_featured' => 'nullable|boolean',
+            'is_deal' => 'nullable|boolean',
             'images.*' => 'string|max:2048',
         ]);
 

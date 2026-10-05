@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Services\OrderPaymentService;
 use App\Services\PaystackService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -15,14 +17,27 @@ class PaymentController extends Controller
     {
         $validated = $request->validate([
             'items' => 'required|array|min:1',
+            'items.*.quantity' => 'required|integer|min:1',
             'fulfillment_method' => 'sometimes|in:delivery,pickup'
         ]);
 
+        $items = collect($request->items)->map(function ($item) {
+          $product = Product::findOrFail($item['product_id'] ?? $item['id']);
+
+          return [
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'quantity' => (int) $item['quantity'],
+            'price' => $product->price,
+
+          ];
+        });
+
         $fulfillmentMethod = $validated['fulfillment_method'] ?? 'delivery';
 
-        $subtotal = 0;
+        $subtotal =  $items->sum(fn ($i) => $i['price'] * $i['quantity']);
 
-        foreach ($request->items as $item) {
+        foreach ($items as $item) {
             $subtotal += $item['price'] * $item['quantity'];
         }
 
@@ -90,57 +105,45 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function verify($reference, PaystackService $paystack)
-    {
-        $response = $paystack->verify($reference);
+    public function verify($reference, PaystackService $paystack, OrderPaymentService $orderPayments)
+{
+    $response = $paystack->verify($reference);
 
-        if (
-            isset($response['status']) &&
-            $response['status'] === true &&
-            isset($response['data']) &&
-            $response['data']['status'] === 'success'
-        ) {
-            $this->completeOrder(
-                $reference,
-                $response['data']['metadata']['order_id'] ?? null
-            );
-
-            return response()->json(['status' => 'success']);
-        }
-
-        return response()->json([
-            'status' => 'failed',
-            'message' => $response['message'] ?? 'Payment verification failed'
-        ], 400);
+    if (
+        ($response['status'] ?? false) === true &&
+        ($response['data']['status'] ?? '') === 'success' &&
+        $orderPayments->complete($reference, $response['data']['amount'] / 100)
+    ) {
+        return response()->json(['status' => 'success']);
     }
 
-    public function callback(Request $request, PaystackService $paystack)
-    {
-        $reference = $request->query('reference');
-        $frontendUrl = config('app.frontend_url');
+    return response()->json([
+        'status'  => 'failed',
+        'message' => $response['message'] ?? 'Payment verification failed',
+    ], 400);
+}
 
-        if (!$reference) {
-            return redirect("{$frontendUrl}/payment-success?status=failed&message=no_reference");
-        }
+public function callback(Request $request, PaystackService $paystack, OrderPaymentService $orderPayments)
+{
+    $reference   = $request->query('reference');
+    $frontendUrl = config('app.frontend_url');
 
-        $response = $paystack->verify($reference);
-
-        if (
-            isset($response['status']) &&
-            $response['status'] === true &&
-            isset($response['data']) &&
-            $response['data']['status'] === 'success'
-        ) {
-            $this->completeOrder(
-                $reference,
-                $response['data']['metadata']['order_id'] ?? null
-            );
-
-            return redirect("{$frontendUrl}/payment-success?reference={$reference}");
-        }
-
-        return redirect("{$frontendUrl}/payment-success?status=failed");
+    if (!$reference) {
+        return redirect("{$frontendUrl}/payment-success?status=failed&message=no_reference");
     }
+
+    $response = $paystack->verify($reference);
+
+    if (
+        ($response['status'] ?? false) === true &&
+        ($response['data']['status'] ?? '') === 'success' &&
+        $orderPayments->complete($reference, $response['data']['amount'] / 100)
+    ) {
+        return redirect("{$frontendUrl}/payment-success?reference={$reference}");
+    }
+
+    return redirect("{$frontendUrl}/payment-success?status=failed");
+}
 
     private function completeOrder($reference, $orderId)
     {

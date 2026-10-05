@@ -1,8 +1,10 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use App\Models\Payment;
+use App\Models\Product;
 use App\Models\Order;
+use App\Services\OrderPaymentService;
 use App\Models\OrderItem;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -73,43 +75,48 @@ class WalletController extends Controller
         }
     }
 
-    public function handleWebhook(Request $request)
+    public function handleWebhook(Request $request, OrderPaymentService $orderPaymentService)
     {
         $paystackSignature = $request->header('x-paystack-signature');
-        $secretKey = config('services.paystack.secret_key');
+    $secretKey = config('services.paystack.secret_key');
 
-        if (!$paystackSignature || $paystackSignature !== hash_hmac('sha512', $request->getContent(), $secretKey)) {
-            return response()->json([
-                'message' => 'Invalid Signature'
-            ], 400);
+    $expected = hash_hmac('sha512', $request->getContent(), $secretKey);
+
+    if (!$paystackSignature || !hash_equals($expected, $paystackSignature)) {
+        return response()->json(['message' => 'Invalid Signature'], 400);
+    }
+
+    $payload = $request->all();
+
+    if (($payload['event'] ?? '') === 'charge.success') {
+        $data = $payload['data'];
+        $reference = $data['reference'];
+        $paidAmount = $data['amount'] / 100;
+        $metadata = $data['metadata'] ?? [];
+
+        if (($metadata['payment_type'] ?? '') === 'wallet_topup') {
+            $this->creditWalletSafely($reference, $paidAmount, $metadata);
+        } elseif (isset($metadata['order_id'])) {
+            // order payment
+            $orderPaymentService->complete($reference, $paidAmount);
         }
-        $payload = $request->all();
+    }
 
-        if (($payload['event'] ?? '') === 'charge.success') {
-            $data = $payload['data'];
-            $reference = $data['reference'];
-            $paidAmount = $data['amount'] / 100;
-            $metadata = $data['metadata'] ?? [];
-
-            if (($metadata['payment_type'] ?? '') === 'wallet_topup') {
-                $this->creditWalletSafely($reference, $paidAmount, $metadata);
-            }
-        }
-        return response()->json([
-            'status' => 'success'
-        ], 200);
+    return response()->json(['status' => 'success'], 200);
     }
 
     private function creditWalletSafely(string $reference, float $paidAmount, array $metadata)
     {
         DB::transaction(function () use ($reference, $paidAmount, $metadata) {
-         $transaction = WalletTransaction::where('reference', $reference)->first();
+         $transaction = WalletTransaction::where('reference', $reference)
+         ->lockForUpdate()
+         ->first();
 
          if (!$transaction || $transaction->status === 'success') {
             return;
          }
 
-         if ((float) $transaction->amount !== (float) $paidAmount) {
+         if (abs((float) $transaction->amount - (float) $paidAmount) > 0.01) {
             $transaction->update([
                 'status' => 'failed',
                 'description' => 'Flagged: Paid amount does not match transaction record amount.',
@@ -171,6 +178,10 @@ class WalletController extends Controller
             // Fetch refreshed transaction record
             $updatedTransaction = WalletTransaction::where('reference', $reference)->first();
 
+            if ($updatedTransaction->status !== 'success') {
+                return response()->json(['message' => 'Payment could not be applied to your wallet. Please contact support.']);
+            }
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Payment verified and wallet funded!',
@@ -189,87 +200,93 @@ class WalletController extends Controller
 public function payWithWallet(Request $request)
 {
     $validated = $request->validate([
-       'items' => 'required|array|min:1',
-       'items.*.product_id' => 'required',
-       'items.*.name' => 'required"string',
-       'items.*.price' => 'required|numeric|min:0',
-       'items.*.quantity' => 'required|integer|min:1',
-       'fulfillment_method' => 'sometimes|in:delivery,pickup'
+        'items' => 'required|array|min:1',
+        'items.*.quantity' => 'required|integer|min:1',
+        'fulfillment_method' => 'sometimes|in:delivery,pickup',
     ]);
 
     $user = $request->user();
     $fulfillmentMethod = $validated['fulfillment_method'] ?? 'delivery';
 
-    $subtotal = 0;
-    foreach ($validated['items'] as $item) {
-        $subtotal +- $item['price'] * $item['quantity'];
-    }
-    $shipping = $fulfillmentMethod === 'delivery' ? $subtotal * 0.15 : 0;
+    $items = collect($request->items)->map(function ($item) {
+        $product = Product::findOrFail($item['product_id'] ?? $item['id']);
+
+        return [
+            'product_id'   => $product->id,
+            'product_name' => $product->name,
+            'quantity'     => (int) $item['quantity'],
+            'price'        => (float) $product->price,
+        ];
+    });
+
+    $subtotal    = $items->sum(fn ($i) => $i['price'] * $i['quantity']);
+    $shipping    = $fulfillmentMethod === 'delivery' ? $subtotal * 0.15 : 0;
     $totalAmount = $subtotal + $shipping;
 
-    $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
+    try {
+        $order = DB::transaction(function () use (
+            $user, $items, $subtotal, $shipping, $totalAmount, $fulfillmentMethod
+        ) {
+            $wallet = Wallet::where('user_id', $user->id)
+                ->lockForUpdate()
+                ->first();
 
-    if (!$wallet || $wallet->balance < $totalAmount) {
+            if (!$wallet || $wallet->balance < $totalAmount) {
+                throw new \DomainException('Insufficient wallet balance.');
+            }
+
+            $reference     = 'WLTPAY_' . Str::random(12);
+            $balanceBefore = $wallet->balance;
+            $balanceAfter  = $balanceBefore - $totalAmount;
+
+            $wallet->update(['balance' => $balanceAfter]);
+
+            WalletTransaction::create([
+                'wallet_id'      => $wallet->id,
+                'reference'      => $reference,
+                'type'           => 'debit',
+                'amount'         => $totalAmount,
+                'balance_before' => $balanceBefore,
+                'balance_after'  => $balanceAfter,
+                'status'         => 'success',
+                'description'    => 'Order payment via wallet balance',
+            ]);
+
+            $order = Order::create([
+                'user_id'            => $user->id,
+                'reference'          => $reference,
+                'subtotal'           => $subtotal,
+                'shipping'           => $shipping,
+                'total_amount'       => $totalAmount,
+                'status'             => 'completed',
+                'fulfillment_method' => $fulfillmentMethod,
+            ]);
+
+            foreach ($items as $item) {
+                OrderItem::create([
+                    'order_id'     => $order->id,
+                    'product_id'   => $item['product_id'],
+                    'product_name' => $item['product_name'],
+                    'quantity'     => $item['quantity'],
+                    'price'        => $item['price'],
+                ]);
+            }
+
+            return $order;
+        });
+    } catch (\DomainException $e) {
         return response()->json([
-        'message' => 'Insufficient eallet balance.',
-        'balance' => $wallet->balance ?? 0,
-        'required' => $totalAmount,
+            'message'  => $e->getMessage(),
+            'required' => $totalAmount,
         ], 422);
     }
 
-    $order = null;
-
-    DB::transaction(function () use ($validated, $user, $wallet, $subtotal, $shipping, $totalAmount, $fulfillmentMethod, &$order) {
-     $reference = 'WLTPAY_' . Str::random(12);
-     $balanceBefore = $wallet->balance;
-     $balanceAfter = $balanceBefore - $totalAmount;
-
-     $lockedWallet = Wallet::where('id', $wallet->id)->lockForUpdate()
-->first();
-  
-if ($lockedWallet->balance < $totalAmount) {
-    throw new \Exception('Insufficient balance at time of transaction.');
+    return response()->json([
+        'message' => 'Order placed successfully using wallet balance.',
+        'order'   => $order->load('item'), // match your Order model's relationship name
+    ], 201);
 }
- $lockedWallet->update(['balance' => $balanceAfter]);
 
- WalletTransaction::create([
- 'wallet_id' => $lockedWallet->id,
-  'reference' => $reference,
-  'type' => 'debit',
-  'amount' => $totalAmount,
-  'balance_before' => $balanceBefore,
-  'balance_after' =>$balanceAfter,
-  'status' => 'success',
-  'description' => 'Order payment via wallet balance',
- ]);
-
-   $order = Order::create([
-     'user_id' => $user->id,
-     'reference' => $reference,
-     'subtotal' => $subtotal,
-     'shipping' => $shipping,
-     'total_amount' => $totalAmount,
-     'status' => 'completed',
-     'fulfillment_method' => $fulfillmentMethod,
-   ]);
-
-   foreach ($validated['item'] as $item) {
-    OrderItem::create([
-      'order_id' => $order->id,
-      'product_id' => $item['product_id'],
-      'product_name' => $item['name'],
-      'quantity' => $item['quantity'],
-      'price' => $item['price'],
-    ]);
-   }
-
-});
-
-return response()->json([
-    'message' => 'Order placed successfully using wallet balance.',
-    'order' => $order->load('item'),
-],201);
-}
 
 public function getWallet(Request $request)
 {
@@ -293,7 +310,7 @@ public function getWallet(Request $request)
 
 public function callback(Request $request, PaystackService $paystack)
 {
-    $reference = $request->query('reference');
+    $reference   = $request->query('reference');
     $frontendUrl = config('app.frontend_url');
 
     if (!$reference) {
@@ -306,14 +323,20 @@ public function callback(Request $request, PaystackService $paystack)
         isset($paystackData['status']) && $paystackData['status'] === true &&
         isset($paystackData['data']) && $paystackData['data']['status'] === 'success'
     ) {
-         $paidAmount = $paystackData['data']['amount'] / 100;
-         $metadata = $paystackData['data']['metadata'] ?? [];
+        $paidAmount = $paystackData['data']['amount'] / 100;
+        $metadata   = $paystackData['data']['metadata'] ?? [];
 
-         if (($metadata['payment_type'] ?? '') === 'wallet_top_up') {
+        if (($metadata['payment_type'] ?? '') === 'wallet_topup') {
             $this->creditWalletSafely($reference, $paidAmount, $metadata);
-         }
-         return redirect("{$frontendUrl}/wallet/callback?reference={$reference}&status=success");
 
+            $transaction = WalletTransaction::where('reference', $reference)->first();
+
+            if (!$transaction || $transaction->status !== 'success') {
+                return redirect("{$frontendUrl}/wallet/callback?reference={$reference}&status=failed");
+            }
+        }
+
+        return redirect("{$frontendUrl}/wallet/callback?reference={$reference}&status=success");
     }
 
     return redirect("{$frontendUrl}/wallet/callback?reference={$reference}&status=failed");

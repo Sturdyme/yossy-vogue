@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\SendOtpEmailJob;
 use App\Mail\OtpMail;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use App\Services\AuthService;
 use App\Services\OtpService;
 use Illuminate\Http\Request;
+use Log;
 
 class AuthController extends Controller
 {
@@ -20,7 +20,7 @@ class AuthController extends Controller
         $this->authService = $authService;
     }
 
-   public function register(Request $request, OtpService $otpService)
+ public function register(Request $request, OtpService $otpService)
 {
     $request->validate([
         'name' => 'required|string',
@@ -28,36 +28,28 @@ class AuthController extends Controller
         'password' => 'required|confirmed|min:6',
     ]);
 
-    $user = User::create([
+    $otpService->storePending($request->email, [
         'name' => $request->name,
-        'email' => $request->email,
         'password' => bcrypt($request->password),
-        'is_verified' => false,
     ]);
 
-     $otpRecord = $otpService->createOtp($user->email);
+    $otp = $otpService->createOtp($request->email);
 
     try {
-        Mail::to($user->email)->send(new OtpMail((string) $otpRecord->otp));
+        Mail::to($request->email)->send(new OtpMail($otp));
     } catch (\Throwable $e) {
-        \Log::error('Register Otp email failed: ' . $e->getMessage());
+        \Log::error('Register OTP email failed: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'We could not send your verification code. Please try again.'
+
+        ], 500);
     }
 
-    $token = $user->createToken('auth_token')->plainTextToken;
-
-   
-
-
     return response()->json([
-        'message' => 'Account created. Please verify OTP sent to your email.',
-        "token" => $token,
-        'user' => [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'is_verified' => false,
-        ]
-    
+        'message' => 'Please verify the OTP sent to your email to complete registration.',
+        'email' => $request->email,
+        'requires_verification' => true,
     ]);
 }
 
@@ -74,6 +66,14 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Invalid email or password'
         ], 401);
+    }
+
+    if (!$user->is_verified) {
+        return response()->json([
+            'message' => 'Please verify your email with the OTP nefore logging in.',
+            'requires_verification' => true,
+            'emaile' => $user->email,
+        ], 403);
     }
 
     $token = $user->createToken('auth_token')->plainTextToken;

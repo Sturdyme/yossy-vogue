@@ -2,46 +2,77 @@
 
 namespace App\Services;
 
-use App\Models\OtpCode;
+use Illuminate\Support\Facades\Cache;
 
 class OtpService
 {
-    public function generateOtp(): int
+    private function hash(string $email): string
     {
-        return random_int(100000, 999999);
+        return hash('sha256', strtolower(trim($email)));
     }
 
-    public function createOtp(string $email)
+    private function otpKey(string $email): string
     {
-        OtpCode::where('email', $email)->delete();
+        return 'otp_code:' . $this->hash($email);
+    }
 
-        return OtpCode::updateOrCreate(
-            ['email' => $email],
-            [
-                'otp' => $this->generateOtp(),
-                'expires_at' => now()->addMinutes(5),
-                'is_used' => false,
-            ]
+    private function pendingKey(string $email): string
+    {
+        return 'pending_registration:' . $this->hash($email);
+    }
+
+    public function createOtp(string $email): string
+    {
+        $otp = (string) random_int(100000, 999999);
+
+        Cache::put(
+            $this->otpKey($email),
+            $otp,
+            now()->addMinutes(5)
         );
+
+        return $otp;
     }
 
     public function verifyOtp(string $email, string $otp): bool
     {
-        $record = OtpCode::where('email', $email)
-            ->where('otp', $otp)
-            ->where('is_used', false)
-            ->first();
+        $key = $this->otpKey($email);
+        $stored = Cache::get($key);
 
-        if (!$record) {
+        if (
+            !is_string($stored) ||
+            !hash_equals($stored, $otp)
+        ) {
             return false;
         }
 
-        if (now()->greaterThan($record->expires_at)) {
-            return false;
-        }
-
-        $record->update(['is_used' => true]);
+        // A successful OTP must not be reusable.
+        Cache::forget($key);
 
         return true;
+    }
+
+    public function storePending(string $email, array $data): void
+    {
+        Cache::put(
+            $this->pendingKey($email),
+            $data,
+            now()->addMinutes(30)
+        );
+    }
+
+    public function getPending(string $email): ?array
+    {
+        return Cache::get($this->pendingKey($email));
+    }
+
+    public function hasPending(string $email): bool
+    {
+        return Cache::has($this->pendingKey($email));
+    }
+
+    public function forgetPending(string $email): void
+    {
+        Cache::forget($this->pendingKey($email));
     }
 }

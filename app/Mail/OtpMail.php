@@ -15,7 +15,7 @@ class OtpMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Your YossyVogue OTP Code')
+        return $this->subject('Your YunaVogue OTP Code')
             ->view('otp');
     }
 }

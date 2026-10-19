@@ -16,7 +16,7 @@ class WelcomeMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Welcome to YossyVogue - Your Fashion Destination!')
+        return $this->subject('Welcome to Yuna Vogue - Your Fashion Destination!')
             ->view('emails.welcome')
             ->with([
                 'userName' => $this->user->name,

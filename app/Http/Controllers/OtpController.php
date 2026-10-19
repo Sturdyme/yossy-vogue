@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\SendOtpEmailJob;
 use App\Mail\OtpMail;
+use App\Mail\WelcomeMail;
 use App\Models\User;
 use App\Services\OtpService;
 use Illuminate\Http\Request;
@@ -104,14 +105,21 @@ class OtpController extends Controller
         }
 
         $user->update([
-            'is_verified' => true
-        ]);
+    'is_verified' => true
+]);
 
-        // Clear rate limiter after success
-        RateLimiter::clear('otp:' . $request->email);
+// Clear rate limiter after success
+RateLimiter::clear('otp:' . $request->email);
 
-        return response()->json([
-            'message' => 'OTP verified successfully'
-        ]);
+// Send welcome email (a mail failure shouldn't fail the verification)
+try {
+    Mail::to($user->email)->send(new WelcomeMail($user));
+} catch (\Throwable $e) {
+    \Log::error('Welcome email failed: ' . $e->getMessage());
+}
+
+return response()->json([
+    'message' => 'OTP verified successfully'
+]);
     }
 }

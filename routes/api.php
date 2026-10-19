@@ -70,7 +70,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/orders/{order_id}', [OrderController::class, 'show']);
 });
 
-Route::get('/otp/resend', [OtpController::class, 'sendOtp']);
-Route::get('/otp/verify/{otp}', [OtpController::class, 'verifyOtp']);
+Route::post('/otp/resend', [OtpController::class, 'sendOtp']);
+Route::post('/otp/verify', [OtpController::class, 'verifyOtp'])->middleware('throttle:10,1');
 
 Route::post('/chat', [AIController::class, 'chat']);

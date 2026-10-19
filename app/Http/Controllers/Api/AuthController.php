@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendOtpEmailJob;
+use App\Mail\OtpMail;
 use App\Models\User;
-use App\Notifications\SendOTPNotification;
+use Illuminate\Support\Facades\Mail;
 use App\Services\AuthService;
 use App\Services\OtpService;
 use Illuminate\Http\Request;
@@ -36,10 +37,11 @@ class AuthController extends Controller
 
      $otpRecord = $otpService->createOtp($user->email);
 
-     SendOtpEmailJob::dispatch(
-        $user->email,
-        $otpRecord->otp
-     );
+    try {
+        Mail::to($user->email)->send(new OtpMail((string) $otpRecord->otp));
+    } catch (\Throwable $e) {
+        \Log::error('Register Otp email failed: ' . $e->getMessage());
+    }
 
     $token = $user->createToken('auth_token')->plainTextToken;
 

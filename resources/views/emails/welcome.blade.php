@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Welcome to YossyVogue</title>
+    <title>Welcome to YunaVogue</title>
     <style>
         body, table, td, a { text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
         table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -23,7 +23,7 @@
                     <tr>
                         <td style="background: linear-gradient(135deg, #f53003 0%, #e63000 100%); padding: 40px 20px; text-align: center;">
                             <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
-                                YossyVogue
+                                YunaVogue
                             </h1>
                             <p style="margin: 8px 0 0 0; font-size: 14px; color: rgba(255, 255, 255, 0.9);">
                                 Your Ultimate Fashion Destination
@@ -39,7 +39,7 @@
                             </h2>
                             
                             <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 24px; color: #666666;">
-                                We're thrilled to have you join the YossyVogue community! Get ready to explore the latest fashion trends, exclusive collections, and premium products.
+                                We're thrilled to have you join the YunaVogue community! Get ready to explore the latest fashion trends, exclusive collections, and premium products.
                             </p>
 
                             <!-- Account Info Box -->
@@ -106,8 +106,8 @@
                         <td style="padding: 0 32px 32px 32px; text-align: center;">
                             <table border="0" cellpadding="0" cellspacing="0">
                                 <tr>
-                                    <td style="background: linear-gradient(135deg, #f53003 0%, #e63000 100%); border-radius: 6px; padding: 0;">
-                                        <a href="{{ config('app.url') }}" style="display: inline-block; padding: 14px 40px; text-decoration: none; color: #ffffff; font-weight: 600; font-size: 16px; border-radius: 6px;">
+                                    <td style="background-color: #f53003; background: linear-gradient(135deg, #f53003 0%, #e63000 100%); border-radius: 6px; padding: 0;">
+                                        <a href="{{ config('app.frontend_url') }}" style="display: inline-block; padding: 14px 40px; text-decoration: none; color: #ffffff; font-weight: 600; font-size: 16px; border-radius: 6px;">
                                             Start Shopping
                                         </a>
                                     </td>
@@ -120,10 +120,10 @@
                     <tr>
                         <td style="background-color: #f9fafb; padding: 24px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0 0 12px 0; font-size: 13px; color: #6b7280;">
-                                &copy; {{ date('Y') }} YossyVogue. All rights reserved.
+                                &copy; {{ date('Y') }} YunaVogue. All rights reserved.
                             </p>
                             <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-                                Questions? <a href="mailto:support@yossyvogue.com" style="color: #f53003; text-decoration: none; font-weight: 600;">Contact our support team</a>
+                                Questions? <a href="mailto:support@yunavogue.com" style="color: #f53003; text-decoration: none; font-weight: 600;">Contact our support team</a>
                             </p>
                         </td>
                     </tr>

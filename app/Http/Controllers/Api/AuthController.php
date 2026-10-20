@@ -53,7 +53,7 @@ class AuthController extends Controller
     ]);
 }
 
- public function login(Request $request)
+ public function login(Request $request, OtpService $otpService)
 {
     $request->validate([
         'email' => 'required|email',
@@ -69,10 +69,11 @@ class AuthController extends Controller
     }
 
     if (!$user->is_verified) {
+        $otp = $otpService->createOtp($user->email);
+        Mail::to($user->email)->send(new OtpMail($otp));
         return response()->json([
-            'message' => 'Please verify your email with the OTP nefore logging in.',
+            'message' => 'Please verify your email first. We sent you a new code.',
             'requires_verification' => true,
-            'emaile' => $user->email,
         ], 403);
     }
 

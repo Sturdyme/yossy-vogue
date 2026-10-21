@@ -1,0 +1,27 @@
+# Secrets: Render injects these as environment variables
+.env
+.env.*
+!.env.example
+
+# Dependencies are installed fresh inside the image
+vendor
+node_modules
+
+# Stale local caches must never override the production environment
+bootstrap/cache/*.php
+storage/logs/*.log
+storage/framework/views/*.php
+storage/framework/cache/data/*
+
+# Local-only files
+.git
+.gitignore
+.idea
+.vscode
+tests
+.phpunit.cache
+public/hot
+public/storage
+Dockerfile
+docker-compose*.yml
+README.md

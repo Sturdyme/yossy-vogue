@@ -156,14 +156,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus']);
 
             // User management
-            Route::get('/users', [UserController::class, 'index']);
+            Route::get('/users', [UserController::class, 'index'])
+                ->middleware('admin.pin');
 
-            Route::put('/users/{user}/role', [UserController::class, 'updateRole']);
+            Route::put('/users/{user}/role', [UserController::class, 'updateRole'])
+                ->middleware('admin.pin');
 
             // Admin dashboard
             Route::get('/dashboard', [AdminController::class, 'dashboardStats']);
 
             // Admin PIN management
+            Route::get('/pin/status', [UserController::class, 'adminPinStatus']);
+
             Route::post('/pin/set', [UserController::class, 'setAdminPin']);
 
             Route::post('/pin/verify', [UserController::class, 'verifyAdminPin']);

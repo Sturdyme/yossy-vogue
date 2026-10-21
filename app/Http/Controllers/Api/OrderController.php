@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    public function show($order_id)
+    public function show($orderId)
     {
         $user = auth()->user();
 
@@ -19,9 +19,11 @@ class OrderController extends Controller
         }
 
         $order = Order::with('items')
-            ->where('order_id', $order_id)
             ->where('user_id', $user->id)
-            ->where('payment_status', 'paid')
+            ->where(function ($query) use ($orderId) {
+                $query->whereKey($orderId)
+                    ->orWhere('reference', $orderId);
+            })
             ->first();
 
         if (!$order) {
@@ -45,7 +47,7 @@ class OrderController extends Controller
 
         $orders = Order::with('items')
         ->where('user_id', $user->id)
-        ->where('payment_status', 'paid')
+        ->latest()
         ->get();
 
         return response()->json([
@@ -55,7 +57,7 @@ class OrderController extends Controller
 
     public function allOrders()
     {
-        return Order::with(['item', 'user'])->latest()->paginate(20);
+        return Order::with(['items', 'user'])->latest()->paginate(20);
     }
 
     public function updateStatus(Request $request, Order $order)
@@ -66,6 +68,6 @@ class OrderController extends Controller
 
         $order->update(['status' => $validated['status']]);
 
-        return response()->json($order->load('item', 'user'));
+        return response()->json($order->load('items', 'user'));
     }
 }

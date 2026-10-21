@@ -1,24 +1,35 @@
 <?php
 
+$corsAllowedOrigins = getenv('CORS_ALLOWED_ORIGINS');
+$corsAllowedOrigins = $corsAllowedOrigins !== false && $corsAllowedOrigins !== ''
+    ? $corsAllowedOrigins
+    : 'https://yossy-vogue.vercel.app,http://localhost:5173,http://localhost:5174';
+
 return [
-'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-'allowed_methods' => ['*'], // Allows POST, GET, OPTIONS, etc.
+    'paths' => ['api/*'],
 
-'allowed_origins' => [
-    'https://yossy-vogue.vercel.app',
-    'http://localhost:5174',
-    'http://localhost:5173',
-],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-'allowed_origins_patterns' => [],
+    // Comma-separated list in the environment, for example:
+    // CORS_ALLOWED_ORIGINS=https://yossy-vogue.vercel.app,http://localhost:5173,http://localhost:5174
+    // Keep production and the default Vite dev ports working if the variable is missing.
+    'allowed_origins' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', $corsAllowedOrigins)
+    ))),
 
-'allowed_headers' => ['*'], // This is crucial for Axios
+    'allowed_origins_patterns' => [],
 
-'exposed_headers' => [],
+    'allowed_headers' => ['Authorization', 'Content-Type', 'Accept', 'X-Requested-With'],
 
-'max_age' => 0,
+    'exposed_headers' => [],
 
-'supports_credentials' => true, // Set to true if you are using cookies/sessions
+    // Browsers may cache the preflight answer for an hour
+    // instead of asking before every single request.
+    'max_age' => 3600,
+
+    // The app authenticates with Bearer tokens, not cookies.
+    'supports_credentials' => false,
 
 ];
